@@ -278,11 +278,11 @@
     <div class="panel">
       <h2>Knowledge Graph</h2>
       <div class="sub">Neo4j — entitas & relasi</div>
-      <div class="stat-grid">
-        <div class="stat-box"><div class="stat-num">0</div><div class="stat-label">Nodes</div></div>
-        <div class="stat-box"><div class="stat-num">0</div><div class="stat-label">Edges</div></div>
-        <div class="stat-box"><div class="stat-num">0</div><div class="stat-label">Topics</div></div>
-        <div class="stat-box"><div class="stat-num">0</div><div class="stat-label">Concepts</div></div>
+      <div class="stat-grid" id="kg-stats">
+        <div class="stat-box"><div class="stat-num">—</div><div class="stat-label">Nodes</div></div>
+        <div class="stat-box"><div class="stat-num">—</div><div class="stat-label">Edges</div></div>
+        <div class="stat-box"><div class="stat-num">—</div><div class="stat-label">Topics</div></div>
+        <div class="stat-box"><div class="stat-num">—</div><div class="stat-label">Concepts</div></div>
       </div>
       <div style="height:20px"></div>
       <h2>Vector Database</h2>
@@ -297,14 +297,9 @@
     <div class="panel">
       <h2>AI Agents</h2>
       <div class="sub">Layer 8 — status orchestrator</div>
-      <div class="agent-row"><span class="agent-dot idle"></span><span class="agent-name">Research Agent</span><span class="agent-task">belum dipasang</span></div>
-      <div class="agent-row"><span class="agent-dot idle"></span><span class="agent-name">News Agent</span><span class="agent-task">belum dipasang</span></div>
-      <div class="agent-row"><span class="agent-dot idle"></span><span class="agent-name">Crawler Agent</span><span class="agent-task">belum dipasang</span></div>
-      <div class="agent-row"><span class="agent-dot idle"></span><span class="agent-name">Fact Checker Agent</span><span class="agent-task">belum dipasang</span></div>
-      <div class="agent-row"><span class="agent-dot idle"></span><span class="agent-name">Trend Agent</span><span class="agent-task">belum dipasang</span></div>
-      <div class="agent-row"><span class="agent-dot idle"></span><span class="agent-name">Report Agent</span><span class="agent-task">belum dipasang</span></div>
-      <div class="agent-row"><span class="agent-dot idle"></span><span class="agent-name">Publisher Agent</span><span class="agent-task">belum dipasang</span></div>
-      <div class="agent-row"><span class="agent-dot idle"></span><span class="agent-name">Dashboard Agent</span><span class="agent-task">menampilkan ini</span></div>
+      <div id="agents-list">
+        <div class="agent-row"><span class="agent-name">Memuat data dari backend...</span></div>
+      </div>
     </div>
 
   </div>
@@ -314,22 +309,8 @@
       <h2>Insight Feed</h2>
       <div class="sub">Layer 10 — akan terisi otomatis setelah backend aktif (contoh tampilan di bawah)</div>
 
-      <div class="insight">
-        <div class="insight-tag">Contoh — Tafsir & Etika Lingkungan</div>
-        <div class="insight-text">Setelah backend aktif, sistem akan menampilkan pola dan hubungan baru yang ditemukan dari dokumen yang dikumpulkan — misalnya perbandingan pendekatan mufasir klasik dan kontemporer terhadap ayat-ayat lingkungan.</div>
-        <div class="insight-time">contoh tampilan — belum ada data nyata</div>
-      </div>
-
-      <div class="insight">
-        <div class="insight-tag">Contoh — Tren Riset</div>
-        <div class="insight-text">Sistem akan bisa mendeteksi peningkatan jumlah publikasi pada topik tertentu dalam rentang waktu yang kamu tentukan.</div>
-        <div class="insight-time">contoh tampilan — belum ada data nyata</div>
-      </div>
-
-      <div class="insight">
-        <div class="insight-tag">Contoh — Research Gap</div>
-        <div class="insight-text">Sistem akan bisa menandai area yang jarang dibahas dibanding topik sejenis, sebagai calon celah riset yang bisa kamu jadikan bahan tulisan.</div>
-        <div class="insight-time">contoh tampilan — belum ada data nyata</div>
+      <div id="insights-list">
+        <div class="insight"><div class="insight-text">Memuat data dari backend...</div></div>
       </div>
     </div>
   </div>
@@ -391,6 +372,40 @@
       .catch(err => {
         const container = document.getElementById("agents-list");
         container.innerHTML = `<div class="agent-row" style="color:#F2A65A">Gagal terhubung ke backend.</div>`;
+        console.error(err);
+      });
+
+    fetch(`${API_BASE}/knowledge-graph`)
+      .then(res => res.json())
+      .then(data => {
+        const box = document.getElementById("kg-stats");
+        box.innerHTML = `
+          <div class="stat-box"><div class="stat-num">${data.nodes}</div><div class="stat-label">Nodes</div></div>
+          <div class="stat-box"><div class="stat-num">${data.edges}</div><div class="stat-label">Edges</div></div>
+          <div class="stat-box"><div class="stat-num">${data.topics}</div><div class="stat-label">Topics</div></div>
+          <div class="stat-box"><div class="stat-num">${data.concepts}</div><div class="stat-label">Concepts</div></div>
+        `;
+      })
+      .catch(err => console.error(err));
+
+    fetch(`${API_BASE}/insights`)
+      .then(res => res.json())
+      .then(data => {
+        const container = document.getElementById("insights-list");
+        container.innerHTML = "";
+        data.forEach(item => {
+          const el = document.createElement("div");
+          el.className = "insight";
+          el.innerHTML = `
+            <div class="insight-tag">${item.tag}</div>
+            <div class="insight-text">${item.teks}</div>
+          `;
+          container.appendChild(el);
+        });
+      })
+      .catch(err => {
+        const container = document.getElementById("insights-list");
+        container.innerHTML = `<div class="insight" style="color:#F2A65A">Gagal terhubung ke backend.</div>`;
         console.error(err);
       });
   </script>
