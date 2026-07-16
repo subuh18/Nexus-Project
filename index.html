@@ -347,7 +347,9 @@
       "menunggu": "status-idle"
     };
 
-    fetch("http://127.0.0.1:8000/sumber-data")
+    const API_BASE = "https://nexus-project-production-c83c.up.railway.app";
+
+    fetch(`${API_BASE}/sumber-data`)
       .then(res => res.json())
       .then(data => {
         const container = document.getElementById("sumber-data-list");
@@ -369,7 +371,7 @@
         container.innerHTML = `<div class="source-row"><div class="source-name" style="color:#F2A65A">Gagal terhubung ke backend. Pastikan server (uvicorn) sedang berjalan.</div></div>`;
         console.error(err);
       });
-    fetch("http://127.0.0.1:8000/agents")
+    fetch(`${API_BASE}/agents`)
       .then(res => res.json())
       .then(data => {
         const container = document.getElementById("agents-list");
