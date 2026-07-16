@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+import requests
 
 app = FastAPI(title="NEXUS Backend API")
 
@@ -64,3 +65,29 @@ def insights():
             "teks": "Contoh tampilan — belum ada data nyata.",
         },
     ]
+
+
+@app.get("/publikasi-terbaru")
+def publikasi_terbaru(q: str = "Islamic environmental ethics"):
+    # Memanggil OpenAlex API sungguhan — tidak butuh API key.
+    url = "https://api.openalex.org/works"
+    params = {
+        "search": q,
+        "per-page": 5,
+        "sort": "publication_date:desc",
+    }
+    response = requests.get(url, params=params, timeout=10)
+    data = response.json()
+
+    hasil = []
+    for item in data.get("results", []):
+        hasil.append({
+            "judul": item.get("title"),
+            "tahun": item.get("publication_year"),
+            "penulis": [
+                a["author"]["display_name"]
+                for a in item.get("authorships", [])[:3]
+            ],
+            "link": item.get("id"),
+        })
+    return hasil
