@@ -269,33 +269,8 @@
     <div class="panel">
       <h2>Sumber Data</h2>
       <div class="sub">Layer 1 — Ingestion pipeline</div>
-      <div class="source-row">
-        <div class="source-name">🌐 OpenAlex</div>
-        <div class="source-status status-active">aktif</div>
-      </div>
-      <div class="source-row">
-        <div class="source-name">📚 Crossref</div>
-        <div class="source-status status-active">aktif</div>
-      </div>
-      <div class="source-row">
-        <div class="source-name">🧠 Semantic Scholar</div>
-        <div class="source-status status-syncing">sinkron</div>
-      </div>
-      <div class="source-row">
-        <div class="source-name">📄 arXiv</div>
-        <div class="source-status status-idle">menunggu</div>
-      </div>
-      <div class="source-row">
-        <div class="source-name">📰 RSS Berita</div>
-        <div class="source-status status-active">aktif</div>
-      </div>
-      <div class="source-row">
-        <div class="source-name">🌦️ BMKG</div>
-        <div class="source-status status-idle">menunggu</div>
-      </div>
-      <div class="source-row">
-        <div class="source-name">📊 BPS</div>
-        <div class="source-status status-idle">menunggu</div>
+      <div id="sumber-data-list">
+        <div class="source-row"><div class="source-name">Memuat data dari backend...</div></div>
       </div>
     </div>
 
@@ -359,7 +334,64 @@
     </div>
   </div>
 
-  <footer>NEXUS v0.1 — miniatur tampilan, belum terhubung ke backend</footer>
+  <footer>NEXUS v0.1 — panel Sumber Data terhubung ke backend, panel lain masih statis</footer>
+
+  <script>
+    const ICON = {
+      "OpenAlex": "🌐", "Crossref": "📚", "Semantic Scholar": "🧠",
+      "arXiv": "📄", "RSS Berita": "📰", "BMKG": "🌦️", "BPS": "📊"
+    };
+    const STATUS_CLASS = {
+      "aktif": "status-active",
+      "sinkron": "status-syncing",
+      "menunggu": "status-idle"
+    };
+
+    fetch("http://127.0.0.1:8000/sumber-data")
+      .then(res => res.json())
+      .then(data => {
+        const container = document.getElementById("sumber-data-list");
+        container.innerHTML = ""; // kosongkan tulisan "Memuat data..."
+        data.forEach(item => {
+          const row = document.createElement("div");
+          row.className = "source-row";
+          const icon = ICON[item.nama] || "•";
+          const statusClass = STATUS_CLASS[item.status] || "status-idle";
+          row.innerHTML = `
+            <div class="source-name">${icon} ${item.nama}</div>
+            <div class="source-status ${statusClass}">${item.status}</div>
+          `;
+          container.appendChild(row);
+        });
+      })
+      .catch(err => {
+        const container = document.getElementById("sumber-data-list");
+        container.innerHTML = `<div class="source-row"><div class="source-name" style="color:#F2A65A">Gagal terhubung ke backend. Pastikan server (uvicorn) sedang berjalan.</div></div>`;
+        console.error(err);
+      });
+    fetch("http://127.0.0.1:8000/agents")
+      .then(res => res.json())
+      .then(data => {
+        const container = document.getElementById("agents-list");
+        container.innerHTML = "";
+        data.forEach(item => {
+          const row = document.createElement("div");
+          row.className = "agent-row";
+          const dotClass = item.status === "menampilkan ini" ? "run" : "idle";
+          row.innerHTML = `
+            <span class="agent-dot ${dotClass}"></span>
+            <span class="agent-name">${item.nama}</span>
+            <span class="agent-task">${item.status}</span>
+          `;
+          container.appendChild(row);
+        });
+      })
+      .catch(err => {
+        const container = document.getElementById("agents-list");
+        container.innerHTML = `<div class="agent-row" style="color:#F2A65A">Gagal terhubung ke backend.</div>`;
+        console.error(err);
+      });
+  </script>
 
 </body>
 </html>
