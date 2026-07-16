@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NEXUS — Knowledge Operating System</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #0B0F17;
+    --surface: #131A26;
+    --surface-2: #1A2333;
+    --line: #232E42;
+    --teal: #4FD1C5;
+    --violet: #8B7FFF;
+    --amber: #F2A65A;
+    --text: #E8EDF2;
+    --text-muted: #7C8798;
+    --font-display: 'Space Grotesk', sans-serif;
+    --font-body: 'Inter', sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+  }
+
+  *{ box-sizing: border-box; margin:0; padding:0; }
+
+  body{
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-body);
+    min-height: 100vh;
+    background-image:
+      radial-gradient(circle at 15% 10%, rgba(79,209,197,0.06), transparent 40%),
+      radial-gradient(circle at 85% 30%, rgba(139,127,255,0.05), transparent 40%);
+  }
+
+  a{ color: inherit; }
+
+  /* ---------- Top bar ---------- */
+  .topbar{
+    display:flex; align-items:center; justify-content:space-between;
+    padding: 20px 32px;
+    border-bottom: 1px solid var(--line);
+  }
+  .brand{
+    display:flex; align-items:center; gap:12px;
+  }
+  .brand-mark{
+    width:34px; height:34px; border-radius:8px;
+    background: linear-gradient(135deg, var(--teal), var(--violet));
+    position: relative;
+  }
+  .brand-mark::after{
+    content:'';
+    position:absolute; inset:9px;
+    border-radius:3px;
+    background: var(--bg);
+  }
+  .brand-text h1{
+    font-family: var(--font-display);
+    font-size: 18px; font-weight: 700; letter-spacing: 0.3px;
+  }
+  .brand-text span{
+    font-size: 11px; color: var(--text-muted); font-family: var(--font-mono);
+    letter-spacing: 0.5px;
+  }
+  .status-pill{
+    display:flex; align-items:center; gap:8px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    padding: 8px 14px; border-radius: 100px;
+    font-family: var(--font-mono); font-size: 12px; color: var(--teal);
+  }
+  .dot{
+    width:7px; height:7px; border-radius:50%;
+    background: var(--teal);
+    box-shadow: 0 0 0 0 rgba(79,209,197,0.6);
+    animation: pulse-dot 2s infinite;
+  }
+  @keyframes pulse-dot{
+    0%{ box-shadow: 0 0 0 0 rgba(79,209,197,0.5); }
+    70%{ box-shadow: 0 0 0 8px rgba(79,209,197,0); }
+    100%{ box-shadow: 0 0 0 0 rgba(79,209,197,0); }
+  }
+
+  /* ---------- Pipeline hero ---------- */
+  .pipeline-section{
+    padding: 40px 32px 30px;
+    border-bottom: 1px solid var(--line);
+  }
+  .pipeline-label{
+    font-family: var(--font-mono); font-size: 11px; color: var(--text-muted);
+    text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 20px;
+  }
+  .pipeline{
+    display:flex; align-items:center;
+    gap: 0;
+    position: relative;
+  }
+  .stage{
+    flex:1;
+    display:flex; flex-direction:column; gap:6px;
+    position:relative; padding: 0 8px;
+  }
+  .stage-num{
+    font-family: var(--font-mono); font-size: 11px; color: var(--text-muted);
+  }
+  .stage-name{
+    font-family: var(--font-display); font-size: 20px; font-weight:600;
+  }
+  .stage:nth-child(1) .stage-name{ color: #A9B4C4; }
+  .stage:nth-child(3) .stage-name{ color: var(--teal); }
+  .stage:nth-child(5) .stage-name{ color: var(--teal); }
+  .stage:nth-child(7) .stage-name{ color: var(--violet); }
+  .stage:nth-child(9) .stage-name{ color: var(--amber); }
+
+  .connector{
+    flex: 0 0 40px;
+    height: 2px;
+    background: var(--line);
+    position: relative;
+    overflow: visible;
+  }
+  .connector::after{
+    content:'';
+    position:absolute; top:-3px; left:-4px;
+    width:8px; height:8px; border-radius:50%;
+    background: var(--teal);
+    box-shadow: 0 0 8px 2px rgba(79,209,197,0.7);
+    animation: travel 4.5s linear infinite;
+  }
+  .connector:nth-child(4)::after{ animation-delay: -0.6s; }
+  .connector:nth-child(8)::after{ animation-delay: -1.8s; }
+  .connector:nth-child(12)::after{ animation-delay: -3s; }
+  .connector:nth-child(16)::after{ animation-delay: -4.2s; }
+
+  @keyframes travel{
+    0%{ left:-4px; opacity:0; }
+    10%{ opacity:1; }
+    90%{ opacity:1; }
+    100%{ left: calc(100% - 4px); opacity:0; }
+  }
+
+  @media (max-width: 900px){
+    .pipeline{ flex-direction:column; align-items:flex-start; gap:16px; }
+    .connector{ display:none; }
+  }
+
+  /* ---------- Grid ---------- */
+  .grid{
+    display:grid;
+    grid-template-columns: 1.3fr 1fr 1fr;
+    gap: 20px;
+    padding: 28px 32px 40px;
+  }
+  @media (max-width: 1000px){
+    .grid{ grid-template-columns: 1fr; }
+  }
+
+  .panel{
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 22px;
+  }
+  .panel h2{
+    font-family: var(--font-display); font-size: 14px; font-weight: 600;
+    letter-spacing: 0.2px; margin-bottom: 4px;
+  }
+  .panel .sub{
+    font-size: 12px; color: var(--text-muted); margin-bottom: 18px;
+  }
+
+  /* Data sources */
+  .source-row{
+    display:flex; align-items:center; justify-content:space-between;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--line);
+    font-size: 13px;
+  }
+  .source-row:last-child{ border-bottom:none; }
+  .source-name{ display:flex; align-items:center; gap:10px; }
+  .source-status{
+    font-family: var(--font-mono); font-size: 11px;
+    padding: 3px 9px; border-radius: 100px;
+  }
+  .status-active{ color: var(--teal); background: rgba(79,209,197,0.1); }
+  .status-idle{ color: var(--text-muted); background: rgba(124,135,152,0.1); }
+  .status-syncing{ color: var(--amber); background: rgba(242,166,90,0.1); }
+
+  /* Stats */
+  .stat-grid{ display:grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .stat-box{
+    background: var(--surface-2); border-radius: 10px; padding: 14px 16px;
+  }
+  .stat-num{
+    font-family: var(--font-mono); font-size: 24px; font-weight:500; color: var(--violet);
+  }
+  .stat-label{ font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+
+  /* Agents */
+  .agent-row{
+    display:flex; align-items:center; gap: 12px;
+    padding: 9px 0;
+    font-size: 13px;
+  }
+  .agent-dot{ width:6px; height:6px; border-radius:50%; flex-shrink:0; }
+  .agent-dot.run{ background: var(--teal); }
+  .agent-dot.idle{ background: var(--text-muted); }
+  .agent-name{ flex:1; }
+  .agent-task{ font-family: var(--font-mono); font-size: 11px; color: var(--text-muted); }
+
+  /* Insights feed */
+  .insight{
+    padding: 14px 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .insight:last-child{ border-bottom:none; }
+  .insight-tag{
+    font-family: var(--font-mono); font-size: 10px; color: var(--violet);
+    text-transform: uppercase; letter-spacing: 0.5px;
+  }
+  .insight-text{ font-size: 13.5px; line-height: 1.5; margin-top: 5px; }
+  .insight-time{ font-size: 11px; color: var(--text-muted); margin-top: 6px; }
+
+  /* Graph mini viz */
+  .graph-wrap{ display:flex; justify-content:center; padding: 6px 0 4px; }
+
+  footer{
+    padding: 20px 32px 32px;
+    color: var(--text-muted);
+    font-size: 11px;
+    font-family: var(--font-mono);
+    text-align:center;
+  }
+</style>
+</head>
+<body>
+
+  <div class="topbar">
+    <div class="brand">
+      <div class="brand-mark"></div>
+      <div class="brand-text">
+        <h1>NEXUS</h1>
+        <span>KNOWLEDGE OPERATING SYSTEM</span>
+      </div>
+    </div>
+    <div class="status-pill"><span class="dot"></span> Sistem sedang belajar</div>
+  </div>
+
+  <div class="pipeline-section">
+    <div class="pipeline-label">Alur Proses — bukan Data → Website</div>
+    <div class="pipeline">
+      <div class="stage"><div class="stage-num">01</div><div class="stage-name">Data</div></div>
+      <div class="connector"></div>
+      <div class="stage"><div class="stage-num">02</div><div class="stage-name">Knowledge</div></div>
+      <div class="connector"></div>
+      <div class="stage"><div class="stage-num">03</div><div class="stage-name">Reasoning</div></div>
+      <div class="connector"></div>
+      <div class="stage"><div class="stage-num">04</div><div class="stage-name">Insight</div></div>
+      <div class="connector"></div>
+      <div class="stage"><div class="stage-num">05</div><div class="stage-name">Action</div></div>
+    </div>
+  </div>
+
+  <div class="grid">
+
+    <!-- Data Sources -->
+    <div class="panel">
+      <h2>Sumber Data</h2>
+      <div class="sub">Layer 1 — Ingestion pipeline</div>
+      <div class="source-row">
+        <div class="source-name">🌐 OpenAlex</div>
+        <div class="source-status status-active">aktif</div>
+      </div>
+      <div class="source-row">
+        <div class="source-name">📚 Crossref</div>
+        <div class="source-status status-active">aktif</div>
+      </div>
+      <div class="source-row">
+        <div class="source-name">🧠 Semantic Scholar</div>
+        <div class="source-status status-syncing">sinkron</div>
+      </div>
+      <div class="source-row">
+        <div class="source-name">📄 arXiv</div>
+        <div class="source-status status-idle">menunggu</div>
+      </div>
+      <div class="source-row">
+        <div class="source-name">📰 RSS Berita</div>
+        <div class="source-status status-active">aktif</div>
+      </div>
+      <div class="source-row">
+        <div class="source-name">🌦️ BMKG</div>
+        <div class="source-status status-idle">menunggu</div>
+      </div>
+      <div class="source-row">
+        <div class="source-name">📊 BPS</div>
+        <div class="source-status status-idle">menunggu</div>
+      </div>
+    </div>
+
+    <!-- Knowledge Graph + Vector DB stats -->
+    <div class="panel">
+      <h2>Knowledge Graph</h2>
+      <div class="sub">Neo4j — entitas & relasi</div>
+      <div class="stat-grid">
+        <div class="stat-box"><div class="stat-num">0</div><div class="stat-label">Nodes</div></div>
+        <div class="stat-box"><div class="stat-num">0</div><div class="stat-label">Edges</div></div>
+        <div class="stat-box"><div class="stat-num">0</div><div class="stat-label">Topics</div></div>
+        <div class="stat-box"><div class="stat-num">0</div><div class="stat-label">Concepts</div></div>
+      </div>
+      <div style="height:20px"></div>
+      <h2>Vector Database</h2>
+      <div class="sub">Qdrant — semantic index</div>
+      <div class="stat-grid">
+        <div class="stat-box"><div class="stat-num">0</div><div class="stat-label">Embeddings</div></div>
+        <div class="stat-box"><div class="stat-num">—</div><div class="stat-label">Belum terhubung</div></div>
+      </div>
+    </div>
+
+    <!-- Agents -->
+    <div class="panel">
+      <h2>AI Agents</h2>
+      <div class="sub">Layer 8 — status orchestrator</div>
+      <div class="agent-row"><span class="agent-dot idle"></span><span class="agent-name">Research Agent</span><span class="agent-task">belum dipasang</span></div>
+      <div class="agent-row"><span class="agent-dot idle"></span><span class="agent-name">News Agent</span><span class="agent-task">belum dipasang</span></div>
+      <div class="agent-row"><span class="agent-dot idle"></span><span class="agent-name">Crawler Agent</span><span class="agent-task">belum dipasang</span></div>
+      <div class="agent-row"><span class="agent-dot idle"></span><span class="agent-name">Fact Checker Agent</span><span class="agent-task">belum dipasang</span></div>
+      <div class="agent-row"><span class="agent-dot idle"></span><span class="agent-name">Trend Agent</span><span class="agent-task">belum dipasang</span></div>
+      <div class="agent-row"><span class="agent-dot idle"></span><span class="agent-name">Report Agent</span><span class="agent-task">belum dipasang</span></div>
+      <div class="agent-row"><span class="agent-dot idle"></span><span class="agent-name">Publisher Agent</span><span class="agent-task">belum dipasang</span></div>
+      <div class="agent-row"><span class="agent-dot idle"></span><span class="agent-name">Dashboard Agent</span><span class="agent-task">menampilkan ini</span></div>
+    </div>
+
+  </div>
+
+  <div class="grid" style="grid-template-columns: 1fr;">
+    <div class="panel">
+      <h2>Insight Feed</h2>
+      <div class="sub">Layer 10 — akan terisi otomatis setelah backend aktif (contoh tampilan di bawah)</div>
+
+      <div class="insight">
+        <div class="insight-tag">Contoh — Tafsir & Etika Lingkungan</div>
+        <div class="insight-text">Setelah backend aktif, sistem akan menampilkan pola dan hubungan baru yang ditemukan dari dokumen yang dikumpulkan — misalnya perbandingan pendekatan mufasir klasik dan kontemporer terhadap ayat-ayat lingkungan.</div>
+        <div class="insight-time">contoh tampilan — belum ada data nyata</div>
+      </div>
+
+      <div class="insight">
+        <div class="insight-tag">Contoh — Tren Riset</div>
+        <div class="insight-text">Sistem akan bisa mendeteksi peningkatan jumlah publikasi pada topik tertentu dalam rentang waktu yang kamu tentukan.</div>
+        <div class="insight-time">contoh tampilan — belum ada data nyata</div>
+      </div>
+
+      <div class="insight">
+        <div class="insight-tag">Contoh — Research Gap</div>
+        <div class="insight-text">Sistem akan bisa menandai area yang jarang dibahas dibanding topik sejenis, sebagai calon celah riset yang bisa kamu jadikan bahan tulisan.</div>
+        <div class="insight-time">contoh tampilan — belum ada data nyata</div>
+      </div>
+    </div>
+  </div>
+
+  <footer>NEXUS v0.1 — miniatur tampilan, belum terhubung ke backend</footer>
+
+</body>
+</html>
