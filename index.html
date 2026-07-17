@@ -306,6 +306,16 @@
 
   <div class="grid" style="grid-template-columns: 1fr;">
     <div class="panel">
+      <h2>Publikasi Terkait Riset</h2>
+      <div class="sub">Data nyata dari OpenAlex — topik: etika lingkungan Islam</div>
+      <div id="publikasi-list">
+        <div class="insight"><div class="insight-text">Memuat data dari backend...</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid" style="grid-template-columns: 1fr;">
+    <div class="panel">
       <h2>Insight Feed</h2>
       <div class="sub">Layer 10 — akan terisi otomatis setelah backend aktif (contoh tampilan di bawah)</div>
 
@@ -405,6 +415,28 @@
       })
       .catch(err => {
         const container = document.getElementById("insights-list");
+        container.innerHTML = `<div class="insight" style="color:#F2A65A">Gagal terhubung ke backend.</div>`;
+        console.error(err);
+      });
+    fetch(`${API_BASE}/publikasi-terbaru`)
+      .then(res => res.json())
+      .then(data => {
+        const container = document.getElementById("publikasi-list");
+        container.innerHTML = "";
+        data.forEach(item => {
+          const el = document.createElement("div");
+          el.className = "insight";
+          const penulis = item.penulis.join(", ");
+          el.innerHTML = `
+            <div class="insight-tag">${item.tahun}</div>
+            <div class="insight-text"><a href="${item.link}" target="_blank" style="color:inherit">${item.judul}</a></div>
+            <div class="insight-time">${penulis}</div>
+          `;
+          container.appendChild(el);
+        });
+      })
+      .catch(err => {
+        const container = document.getElementById("publikasi-list");
         container.innerHTML = `<div class="insight" style="color:#F2A65A">Gagal terhubung ke backend.</div>`;
         console.error(err);
       });

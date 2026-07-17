@@ -70,11 +70,12 @@ def insights():
 @app.get("/publikasi-terbaru")
 def publikasi_terbaru(q: str = "Islamic environmental ethics"):
     # Memanggil OpenAlex API sungguhan — tidak butuh API key.
+    # Tanpa parameter "sort", OpenAlex otomatis mengurutkan berdasarkan
+    # relevansi terhadap kata kunci pencarian, bukan berdasarkan tanggal.
     url = "https://api.openalex.org/works"
     params = {
         "search": q,
         "per-page": 5,
-        "sort": "publication_date:desc",
     }
     response = requests.get(url, params=params, timeout=10)
     data = response.json()
