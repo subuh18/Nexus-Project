@@ -6,6 +6,7 @@ import os
 app = FastAPI(title="NEXUS Backend API")
 
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
+SEMANTIC_SCHOLAR_API_KEY = os.environ.get("SEMANTIC_SCHOLAR_API_KEY")
 
 # CORS: mengizinkan dashboard (yang di-hosting di domain lain, misalnya
 # GitHub Pages) untuk boleh memanggil API ini dari browser.
@@ -70,9 +71,7 @@ def insights():
     ]
 
 
-def ambil_publikasi(q: str, jumlah: int = 5):
-    # Fungsi ini dipakai bersama oleh endpoint /publikasi-terbaru
-    # dan /ringkasan-riset, supaya logikanya tidak ditulis dua kali.
+def ambil_openalex(q: str, jumlah: int = 5):
     url = "https://api.openalex.org/works"
     params = {
         "search": q,
@@ -91,13 +90,90 @@ def ambil_publikasi(q: str, jumlah: int = 5):
                 for a in item.get("authorships", [])[:3]
             ],
             "link": item.get("id"),
+            "sumber": "OpenAlex",
+        })
+    return hasil
+
+
+def ambil_crossref(q: str, jumlah: int = 5):
+    url = "https://api.crossref.org/works"
+    params = {
+        "query": q,
+        "rows": jumlah,
+    }
+    response = requests.get(url, params=params, timeout=10)
+    data = response.json()
+
+    hasil = []
+    for item in data.get("message", {}).get("items", []):
+        judul_list = item.get("title", [])
+        hasil.append({
+            "judul": judul_list[0] if judul_list else None,
+            "tahun": (
+                item.get("issued", {})
+                .get("date-parts", [[None]])[0][0]
+            ),
+            "penulis": [
+                f"{a.get('given', '')} {a.get('family', '')}".strip()
+                for a in item.get("author", [])[:3]
+            ],
+            "link": item.get("URL"),
+            "sumber": "Crossref",
+        })
+    return hasil
+
+
+def ambil_semantic_scholar(q: str, jumlah: int = 5):
+    url = "https://api.semanticscholar.org/graph/v1/paper/search"
+    params = {
+        "query": q,
+        "limit": jumlah,
+        "fields": "title,year,authors,url",
+    }
+    headers = {}
+    if SEMANTIC_SCHOLAR_API_KEY:
+        headers["x-api-key"] = SEMANTIC_SCHOLAR_API_KEY
+
+    response = requests.get(url, params=params, headers=headers, timeout=10)
+
+    # Kalau statusnya bukan 200, jangan diam-diam kembalikan list kosong —
+    # lempar error yang jelas supaya kelihatan di /publikasi-gabungan.
+    if response.status_code != 200:
+        raise Exception(
+            f"status {response.status_code} — {response.text[:150]}"
+        )
+
+    data = response.json()
+    hasil = []
+    for item in data.get("data", []):
+        hasil.append({
+            "judul": item.get("title"),
+            "tahun": item.get("year"),
+            "penulis": [a.get("name") for a in item.get("authors", [])[:3]],
+            "link": item.get("url"),
+            "sumber": "Semantic Scholar",
         })
     return hasil
 
 
 @app.get("/publikasi-terbaru")
 def publikasi_terbaru(q: str = "Islamic environmental ethics"):
-    return ambil_publikasi(q)
+    return ambil_openalex(q)
+
+
+@app.get("/publikasi-gabungan")
+def publikasi_gabungan(q: str = "Islamic environmental ethics"):
+    # Ambil dari 3 sumber berbeda, gabungkan jadi satu daftar dengan
+    # format yang sama (setiap item punya field "sumber" untuk menandai
+    # asalnya). Kalau salah satu sumber gagal, jangan sampai bikin
+    # seluruh endpoint ikut gagal — tangkap errornya per sumber.
+    hasil = []
+    for fungsi in (ambil_openalex, ambil_crossref, ambil_semantic_scholar):
+        try:
+            hasil.extend(fungsi(q, 3))
+        except Exception as e:
+            hasil.append({"error": f"{fungsi.__name__} gagal: {e}"})
+    return hasil
 
 
 @app.get("/ringkasan-riset")
@@ -105,7 +181,7 @@ def ringkasan_riset(q: str = "Islamic environmental ethics"):
     if not GROQ_API_KEY:
         return {"error": "GROQ_API_KEY belum diatur di environment variable."}
 
-    publikasi = ambil_publikasi(q, jumlah=5)
+    publikasi = ambil_openalex(q, jumlah=5)
 
     # Susun daftar judul jadi satu teks yang akan dikirim ke AI
     daftar_judul = "\n".join(
