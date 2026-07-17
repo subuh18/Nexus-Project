@@ -398,27 +398,30 @@
       })
       .catch(err => console.error(err));
 
-    fetch(`${API_BASE}/insights`)
+    fetch(`${API_BASE}/ringkasan-riset`)
       .then(res => res.json())
       .then(data => {
         const container = document.getElementById("insights-list");
         container.innerHTML = "";
-        data.forEach(item => {
-          const el = document.createElement("div");
-          el.className = "insight";
-          el.innerHTML = `
-            <div class="insight-tag">${item.tag}</div>
-            <div class="insight-text">${item.teks}</div>
-          `;
-          container.appendChild(el);
-        });
+        if (data.error) {
+          container.innerHTML = `<div class="insight" style="color:#F2A65A">${data.error}</div>`;
+          return;
+        }
+        const el = document.createElement("div");
+        el.className = "insight";
+        el.innerHTML = `
+          <div class="insight-tag">Analisis AI — Tren Riset</div>
+          <div class="insight-text">${data.ringkasan}</div>
+          <div class="insight-time">Berdasarkan ${data.berdasarkan_publikasi.length} publikasi dari OpenAlex</div>
+        `;
+        container.appendChild(el);
       })
       .catch(err => {
         const container = document.getElementById("insights-list");
         container.innerHTML = `<div class="insight" style="color:#F2A65A">Gagal terhubung ke backend.</div>`;
         console.error(err);
       });
-    fetch(`${API_BASE}/publikasi-terbaru`)
+    fetch(`${API_BASE}/publikasi-gabungan`)
       .then(res => res.json())
       .then(data => {
         const container = document.getElementById("publikasi-list");
@@ -426,9 +429,15 @@
         data.forEach(item => {
           const el = document.createElement("div");
           el.className = "insight";
+          if (item.error) {
+            el.style.color = "#F2A65A";
+            el.innerHTML = `<div class="insight-text">${item.error}</div>`;
+            container.appendChild(el);
+            return;
+          }
           const penulis = item.penulis.join(", ");
           el.innerHTML = `
-            <div class="insight-tag">${item.tahun}</div>
+            <div class="insight-tag">${item.sumber} · ${item.tahun}</div>
             <div class="insight-text"><a href="${item.link}" target="_blank" style="color:inherit">${item.judul}</a></div>
             <div class="insight-time">${penulis}</div>
           `;
