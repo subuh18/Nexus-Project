@@ -9,6 +9,8 @@ app = FastAPI(title="NEXUS Backend API")
 
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
 SEMANTIC_SCHOLAR_API_KEY = os.environ.get("SEMANTIC_SCHOLAR_API_KEY")
+TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
+TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID")
 
 NEO4J_URI = os.environ.get("NEO4J_URI")
 NEO4J_USER = os.environ.get("NEO4J_USER")
@@ -57,7 +59,7 @@ def agents():
         {"nama": "Fact Checker Agent", "status": "aktif"},
         {"nama": "Trend Agent", "status": "aktif"},
         {"nama": "Report Agent", "status": "aktif"},
-        {"nama": "Publisher Agent", "status": "belum dipasang"},
+        {"nama": "Publisher Agent", "status": "aktif"},
         {"nama": "Dashboard Agent", "status": "menampilkan ini"},
     ]
 
@@ -720,3 +722,48 @@ def agent_report(topik: str = "Islamic environmental ethics"):
             laporan["bagian"]["tren_per_tahun"] = f"gagal: {e}"
 
     return laporan
+
+
+def kirim_telegram(pesan: str):
+    if not (TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID):
+        raise Exception("TELEGRAM_BOT_TOKEN atau TELEGRAM_CHAT_ID belum diatur.")
+
+    url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
+    response = requests.post(
+        url,
+        json={"chat_id": TELEGRAM_CHAT_ID, "text": pesan[:4000]},  # Telegram batasi ~4096 karakter
+        timeout=15,
+    )
+    data = response.json()
+    if not data.get("ok"):
+        raise Exception(f"Telegram menolak pesan: {data}")
+    return data
+
+
+@app.get("/agent/publisher")
+def agent_publisher(topik: str = "Islamic environmental ethics"):
+    """
+    Publisher Agent — mengambil ringkasan riset (lewat buat_ringkasan_ai,
+    yang sudah dipakai Research Agent), lalu MENGIRIMKANNYA keluar sistem
+    lewat Telegram. Ini agent pertama yang hasilnya sampai ke luar dashboard.
+    """
+    publikasi = ambil_openalex(topik, jumlah=8)
+
+    try:
+        ringkasan = buat_ringkasan_ai(publikasi, topik)
+    except Exception as e:
+        return {"error": f"Gagal membuat ringkasan: {e}"}
+
+    pesan = (
+        f"NEXUS — Laporan Riset Harian\n"
+        f"Topik: {topik}\n\n"
+        f"{ringkasan}\n\n"
+        f"Berdasarkan {len(publikasi)} publikasi."
+    )
+
+    try:
+        kirim_telegram(pesan)
+    except Exception as e:
+        return {"error": f"Ringkasan berhasil dibuat, tapi gagal kirim ke Telegram: {e}", "ringkasan": ringkasan}
+
+    return {"status": "terkirim ke Telegram", "topik": topik, "ringkasan": ringkasan}
