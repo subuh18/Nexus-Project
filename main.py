@@ -55,7 +55,7 @@ def agents():
         {"nama": "News Agent", "status": "aktif"},
         {"nama": "Crawler Agent", "status": "belum dipasang"},
         {"nama": "Fact Checker Agent", "status": "aktif"},
-        {"nama": "Trend Agent", "status": "belum dipasang"},
+        {"nama": "Trend Agent", "status": "aktif"},
         {"nama": "Report Agent", "status": "belum dipasang"},
         {"nama": "Publisher Agent", "status": "belum dipasang"},
         {"nama": "Dashboard Agent", "status": "menampilkan ini"},
@@ -592,3 +592,62 @@ def agent_news(topik: str = "etika lingkungan Islam"):
             ringkasan = f"Gagal membuat ringkasan: {e}"
 
     return {"topik": topik, "berita": berita, "ringkasan": ringkasan}
+
+
+@app.get("/agent/trend")
+def agent_trend(topik: str = "Islamic environmental ethics"):
+    """
+    Trend Agent — TIDAK mengambil data baru dari internet. Dia membaca
+    ulang data yang sudah tersimpan di Knowledge Graph (hasil kerja
+    Research Agent sebelumnya), lalu menganalisis pola jumlah publikasi
+    per tahun untuk topik tertentu.
+    """
+    if not driver:
+        return {"error": "Neo4j belum terhubung."}
+
+    with driver.session() as session:
+        hasil = session.run(
+            """
+            MATCH (p:Publikasi)-[:MEMBAHAS]->(t:Topik {nama: $topik})
+            WHERE p.tahun IS NOT NULL
+            RETURN p.tahun AS tahun, count(p) AS jumlah
+            ORDER BY tahun
+            """,
+            topik=topik,
+        )
+        per_tahun = [{"tahun": r["tahun"], "jumlah": r["jumlah"]} for r in hasil]
+
+    if not per_tahun:
+        return {
+            "topik": topik,
+            "per_tahun": [],
+            "catatan": "Belum ada data tersimpan untuk topik ini. Jalankan /agent/research atau /simpan-graph dulu.",
+        }
+
+    # Susun data jadi teks sederhana untuk dibaca AI
+    ringkasan_data = "\n".join(f"{d['tahun']}: {d['jumlah']} publikasi" for d in per_tahun)
+    prompt = (
+        f"Berikut data jumlah publikasi per tahun untuk topik '{topik}':\n\n"
+        f"{ringkasan_data}\n\n"
+        "Analisis singkat (2-3 kalimat, Bahasa Indonesia): apakah tren "
+        "riset ini meningkat, menurun, atau stabil? Sebutkan tahun dengan "
+        "jumlah publikasi tertinggi kalau terlihat jelas."
+    )
+
+    analisis = None
+    if GROQ_API_KEY:
+        try:
+            response = requests.post(
+                "https://api.groq.com/openai/v1/chat/completions",
+                headers={"Authorization": f"Bearer {GROQ_API_KEY}"},
+                json={
+                    "model": "llama-3.3-70b-versatile",
+                    "messages": [{"role": "user", "content": prompt}],
+                },
+                timeout=30,
+            )
+            analisis = response.json()["choices"][0]["message"]["content"]
+        except Exception as e:
+            analisis = f"Gagal membuat analisis: {e}"
+
+    return {"topik": topik, "per_tahun": per_tahun, "analisis": analisis}
