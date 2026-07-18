@@ -92,17 +92,38 @@ def insights():
     ]
 
 
+# Bidang ilmu yang kemungkinan besar TIDAK relevan untuk riset tafsir/
+# studi Islam — dipakai untuk menyaring hasil pencarian yang cuma
+# "kebetulan" mengandung kata kunci yang sama, padahal beda dunia keilmuan.
+BIDANG_TIDAK_RELEVAN = {
+    "Computer science", "Artificial intelligence", "Mathematics",
+    "Physics", "Engineering", "Medicine", "Biology", "Chemistry",
+}
+
+
 def ambil_openalex(q: str, jumlah: int = 5):
     url = "https://api.openalex.org/works"
     params = {
         "search": q,
-        "per-page": jumlah,
+        # Minta lebih banyak dari yang dibutuhkan, karena sebagian akan
+        # disaring keluar oleh filter bidang ilmu di bawah.
+        "per-page": min(jumlah * 3, 50),
     }
     response = requests.get(url, params=params, timeout=10)
     data = response.json()
 
     hasil = []
     for item in data.get("results", []):
+        # Ambil bidang ilmu yang skor relevansinya cukup tinggi (>0.4)
+        # untuk item ini, lalu cek apakah bertabrakan dengan daftar
+        # bidang yang tidak relevan.
+        concepts = item.get("concepts", [])
+        bidang_utama = {
+            c["display_name"] for c in concepts if c.get("score", 0) > 0.4
+        }
+        if bidang_utama & BIDANG_TIDAK_RELEVAN:
+            continue  # lewati — kemungkinan besar bukan riset humaniora/agama
+
         hasil.append({
             "judul": item.get("title"),
             "tahun": item.get("publication_year"),
@@ -113,6 +134,8 @@ def ambil_openalex(q: str, jumlah: int = 5):
             "link": item.get("id"),
             "sumber": "OpenAlex",
         })
+        if len(hasil) >= jumlah:
+            break
     return hasil
 
 
@@ -182,17 +205,36 @@ def ambil_arxiv(q: str, jumlah: int = 5):
     url = "http://export.arxiv.org/api/query"
     params = {
         "search_query": f"all:{q}",
-        "max_results": jumlah,
+        "max_results": min(jumlah * 3, 50),
     }
     response = requests.get(url, params=params, timeout=10)
 
     # Atom feed pakai "namespace" — semacam prefix wajib di setiap tag,
     # supaya tag <title> dari Atom tidak tertukar tag <title> format lain.
-    ns = {"atom": "http://www.w3.org/2005/Atom"}
+    # arXiv juga punya namespace tambahan khusus untuk info kategori.
+    ns = {
+        "atom": "http://www.w3.org/2005/Atom",
+        "arxiv": "http://arxiv.org/schemas/atom",
+    }
     root = ET.fromstring(response.text)
+
+    # Awalan kode kategori arXiv yang jelas-jelas bukan humaniora/agama.
+    # arXiv memang tidak punya kategori tafsir/studi Islam sama sekali,
+    # jadi filter ini kemungkinan besar akan membuang hampir semua hasil —
+    # itu sesuai dugaan awal bahwa arXiv bukan sumber yang cocok untuk topik ini.
+    KATEGORI_TIDAK_RELEVAN = (
+        "cs.", "math.", "physics.", "eess.", "stat.",
+        "q-bio.", "q-fin.", "cond-mat.", "astro-ph.",
+        "hep-", "nlin.", "gr-qc", "quant-ph",
+    )
 
     hasil = []
     for entry in root.findall("atom:entry", ns):
+        kategori_tag = entry.find("arxiv:primary_category", ns)
+        kode_kategori = kategori_tag.get("term", "") if kategori_tag is not None else ""
+        if kode_kategori.startswith(KATEGORI_TIDAK_RELEVAN):
+            continue  # lewati — bidang ilmu tidak relevan
+
         judul_tag = entry.find("atom:title", ns)
         id_tag = entry.find("atom:id", ns)
         published_tag = entry.find("atom:published", ns)
@@ -210,6 +252,8 @@ def ambil_arxiv(q: str, jumlah: int = 5):
             "link": id_tag.text if id_tag is not None else None,
             "sumber": "arXiv",
         })
+        if len(hasil) >= jumlah:
+            break
     return hasil
 
 
