@@ -56,7 +56,7 @@ def agents():
         {"nama": "Crawler Agent", "status": "belum dipasang"},
         {"nama": "Fact Checker Agent", "status": "aktif"},
         {"nama": "Trend Agent", "status": "aktif"},
-        {"nama": "Report Agent", "status": "belum dipasang"},
+        {"nama": "Report Agent", "status": "aktif"},
         {"nama": "Publisher Agent", "status": "belum dipasang"},
         {"nama": "Dashboard Agent", "status": "menampilkan ini"},
     ]
@@ -283,7 +283,7 @@ def ambil_arxiv(q: str, jumlah: int = 5):
         hasil.append({
             "judul": judul_tag.text.strip() if judul_tag is not None else None,
             "tahun": (
-                published_tag.text[:4] if published_tag is not None else None
+                int(published_tag.text[:4]) if published_tag is not None else None
             ),
             "penulis": penulis,
             "link": id_tag.text if id_tag is not None else None,
@@ -651,3 +651,72 @@ def agent_trend(topik: str = "Islamic environmental ethics"):
             analisis = f"Gagal membuat analisis: {e}"
 
     return {"topik": topik, "per_tahun": per_tahun, "analisis": analisis}
+
+
+@app.get("/agent/report")
+def agent_report(topik: str = "Islamic environmental ethics"):
+    """
+    Report Agent — TIDAK punya logika sendiri. Tugasnya memanggil ulang
+    Research, Fact Checker, News, dan Trend Agent, lalu menyusun hasilnya
+    jadi satu laporan lengkap. Ini contoh nyata "orchestrator" — unit yang
+    mengatur unit-unit lain, bukan mengerjakan tugas dasar sendiri.
+    """
+    laporan = {"topik": topik, "bagian": {}}
+
+    # --- Bagian 1: Research (ambil data + simpan graph + ringkasan) ---
+    publikasi = []
+    for fungsi in (ambil_openalex, ambil_crossref, ambil_semantic_scholar, ambil_arxiv):
+        try:
+            publikasi.extend(fungsi(topik, 10))
+        except Exception:
+            pass  # sumber yang gagal dilewati saja untuk laporan gabungan ini
+
+    laporan["bagian"]["jumlah_publikasi"] = len(publikasi)
+
+    if driver:
+        try:
+            simpan_ke_graph(publikasi, topik)
+        except Exception as e:
+            laporan["bagian"]["graph"] = f"gagal: {e}"
+
+    ringkasan = None
+    try:
+        ringkasan = buat_ringkasan_ai(publikasi, topik)
+        laporan["bagian"]["ringkasan"] = ringkasan
+    except Exception as e:
+        laporan["bagian"]["ringkasan"] = f"gagal: {e}"
+
+    # --- Bagian 2: Fact Checker (verifikasi ringkasan di atas) ---
+    if ringkasan:
+        try:
+            laporan["bagian"]["verifikasi"] = cek_fakta_ai(ringkasan, publikasi)
+        except Exception as e:
+            laporan["bagian"]["verifikasi"] = f"gagal: {e}"
+
+    # --- Bagian 3: News (wacana publik terkini) ---
+    try:
+        berita = ambil_berita(topik, jumlah=5)
+        laporan["bagian"]["berita_terkait"] = berita
+    except Exception as e:
+        laporan["bagian"]["berita_terkait"] = f"gagal: {e}"
+
+    # --- Bagian 4: Trend (dari data graph yang baru saja diperbarui) ---
+    if driver:
+        try:
+            with driver.session() as session:
+                hasil = session.run(
+                    """
+                    MATCH (p:Publikasi)-[:MEMBAHAS]->(t:Topik {nama: $topik})
+                    WHERE p.tahun IS NOT NULL
+                    RETURN p.tahun AS tahun, count(p) AS jumlah
+                    ORDER BY tahun
+                    """,
+                    topik=topik,
+                )
+                laporan["bagian"]["tren_per_tahun"] = [
+                    {"tahun": r["tahun"], "jumlah": r["jumlah"]} for r in hasil
+                ]
+        except Exception as e:
+            laporan["bagian"]["tren_per_tahun"] = f"gagal: {e}"
+
+    return laporan
