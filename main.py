@@ -52,7 +52,7 @@ def sumber_data():
 def agents():
     return [
         {"nama": "Research Agent", "status": "aktif"},
-        {"nama": "News Agent", "status": "belum dipasang"},
+        {"nama": "News Agent", "status": "aktif"},
         {"nama": "Crawler Agent", "status": "belum dipasang"},
         {"nama": "Fact Checker Agent", "status": "aktif"},
         {"nama": "Trend Agent", "status": "belum dipasang"},
@@ -294,6 +294,33 @@ def ambil_arxiv(q: str, jumlah: int = 5):
     return hasil
 
 
+def ambil_berita(q: str, jumlah: int = 5):
+    # Google News RSS — gratis, tidak perlu API key.
+    # hl=id, gl=ID, ceid=ID:id -> minta hasil dalam Bahasa Indonesia.
+    url = "https://news.google.com/rss/search"
+    params = {"q": q, "hl": "id", "gl": "ID", "ceid": "ID:id"}
+    response = requests.get(url, params=params, timeout=10)
+
+    # RSS (beda dari Atom-nya arXiv) biasanya tidak butuh namespace khusus
+    # untuk tag standarnya seperti <item>, <title>, <link>, <pubDate>.
+    root = ET.fromstring(response.text)
+
+    hasil = []
+    for item in root.findall(".//item")[:jumlah]:
+        judul = item.find("title")
+        link = item.find("link")
+        tanggal = item.find("pubDate")
+        sumber = item.find("source")
+
+        hasil.append({
+            "judul": judul.text if judul is not None else None,
+            "tanggal": tanggal.text if tanggal is not None else None,
+            "link": link.text if link is not None else None,
+            "media": sumber.text if sumber is not None else "Tidak diketahui",
+        })
+    return hasil
+
+
 @app.get("/publikasi-terbaru")
 def publikasi_terbaru(q: str = "Islamic environmental ethics"):
     return ambil_openalex(q)
@@ -524,3 +551,44 @@ def agent_research(topik: str = "Islamic environmental ethics"):
         laporan["langkah"].append(f"ringkasan AI: gagal ({e})")
 
     return laporan
+
+
+@app.get("/agent/news")
+def agent_news(topik: str = "etika lingkungan Islam"):
+    """
+    News Agent — memantau berita terkini (bukan jurnal akademik) terkait
+    topik riset, lalu membuat ringkasan singkat soal wacana publik
+    yang sedang berkembang.
+    """
+    berita = ambil_berita(topik, jumlah=8)
+
+    if not berita:
+        return {"topik": topik, "berita": [], "ringkasan": "Tidak ada berita ditemukan."}
+
+    daftar_judul_berita = "\n".join(
+        f"- {b['judul']} ({b['media']})" for b in berita if b.get("judul")
+    )
+    prompt = (
+        f"Berikut daftar judul berita terkini tentang '{topik}':\n\n"
+        f"{daftar_judul_berita}\n\n"
+        "Buat ringkasan singkat (2-3 kalimat, Bahasa Indonesia) soal "
+        "wacana publik apa yang sedang berkembang dari berita-berita ini."
+    )
+
+    ringkasan = None
+    if GROQ_API_KEY:
+        try:
+            response = requests.post(
+                "https://api.groq.com/openai/v1/chat/completions",
+                headers={"Authorization": f"Bearer {GROQ_API_KEY}"},
+                json={
+                    "model": "llama-3.3-70b-versatile",
+                    "messages": [{"role": "user", "content": prompt}],
+                },
+                timeout=30,
+            )
+            ringkasan = response.json()["choices"][0]["message"]["content"]
+        except Exception as e:
+            ringkasan = f"Gagal membuat ringkasan: {e}"
+
+    return {"topik": topik, "berita": berita, "ringkasan": ringkasan}
