@@ -6,6 +6,7 @@
 <title>NEXUS — Knowledge Operating System</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.9/standalone/umd/vis-network.min.js"></script>
 <style>
   :root{
     --bg: #0B0F17;
@@ -357,6 +358,14 @@
 
   <div class="grid" style="grid-template-columns: 1fr;">
     <div class="panel">
+      <h2>Peta Pengetahuan</h2>
+      <div class="sub">Visualisasi graph — geser, zoom, klik node untuk lihat detail</div>
+      <div id="graph-canvas" style="height: 480px; background: var(--surface-2); border-radius: 10px;"></div>
+    </div>
+  </div>
+
+  <div class="grid" style="grid-template-columns: 1fr;">
+    <div class="panel">
       <h2>Publikasi Terkait Riset</h2>
       <div class="sub" id="publikasi-sub">Data nyata dari OpenAlex &amp; Crossref — topik: Islamic environmental ethics</div>
       <div id="publikasi-list">
@@ -390,6 +399,48 @@
     };
 
     const API_BASE = "https://nexus-project-production-c83c.up.railway.app";
+
+    // Warna node berbeda per jenis, supaya gampang dibedakan sekilas.
+    const WARNA_GROUP = {
+      Publikasi: { background: "#4FD1C5", border: "#3AA89E" },
+      Topik: { background: "#F2A65A", border: "#C9843E" },
+      Penulis: { background: "#8B7FFF", border: "#6B5FD9" },
+    };
+
+    function muatGraph() {
+      const container = document.getElementById("graph-canvas");
+      fetch(`${API_BASE}/graph-data`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.nodes.length === 0) {
+            container.innerHTML = `<div style="padding:20px;color:#7C8798">Belum ada data graph. Panggil /simpan-graph dulu di backend.</div>`;
+            return;
+          }
+          const nodes = new vis.DataSet(
+            data.nodes.map(n => ({
+              id: n.id,
+              label: n.label,
+              color: WARNA_GROUP[n.group] || { background: "#7C8798", border: "#5c6472" },
+              font: { color: "#E8EDF2", size: 12 },
+              shape: n.group === "Publikasi" ? "box" : "dot",
+              size: n.group === "Topik" ? 22 : 12,
+            }))
+          );
+          const edges = new vis.DataSet(
+            data.edges.map(e => ({ from: e.from, to: e.to, arrows: "to", color: { color: "#232E42" } }))
+          );
+
+          new vis.Network(container, { nodes, edges }, {
+            physics: { solver: "forceAtlas2Based", stabilization: { iterations: 150 } },
+            interaction: { hover: true },
+          });
+        })
+        .catch(err => {
+          container.innerHTML = `<div style="padding:20px;color:#F2A65A">Gagal memuat graph.</div>`;
+          console.error(err);
+        });
+    }
+    muatGraph();
 
     fetch(`${API_BASE}/sumber-data`)
       .then(res => res.json())

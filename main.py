@@ -78,6 +78,43 @@ def knowledge_graph():
     return {"nodes": nodes, "edges": edges, "topics": topics, "concepts": penulis}
 
 
+@app.get("/graph-data")
+def graph_data():
+    if not driver:
+        return {"nodes": [], "edges": []}
+
+    with driver.session() as session:
+        # Ambil node: id internal Neo4j, jenisnya (label), dan nama
+        # yang enak dibaca (judul untuk Publikasi, nama untuk yang lain).
+        hasil_node = session.run(
+            """
+            MATCH (n)
+            RETURN elementId(n) AS id, labels(n)[0] AS jenis,
+                   coalesce(n.judul, n.nama) AS nama
+            LIMIT 300
+            """
+        )
+        nodes = [
+            {"id": r["id"], "label": (r["nama"] or "")[:40], "group": r["jenis"]}
+            for r in hasil_node
+        ]
+
+        # Ambil relationship: dari node mana ke node mana, jenis apa.
+        hasil_edge = session.run(
+            """
+            MATCH (a)-[r]->(b)
+            RETURN elementId(a) AS source, elementId(b) AS target, type(r) AS tipe
+            LIMIT 300
+            """
+        )
+        edges = [
+            {"from": r["source"], "to": r["target"], "label": r["tipe"]}
+            for r in hasil_edge
+        ]
+
+    return {"nodes": nodes, "edges": edges}
+
+
 @app.get("/insights")
 def insights():
     return [
