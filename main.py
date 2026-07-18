@@ -54,7 +54,7 @@ def agents():
         {"nama": "Research Agent", "status": "aktif"},
         {"nama": "News Agent", "status": "belum dipasang"},
         {"nama": "Crawler Agent", "status": "belum dipasang"},
-        {"nama": "Fact Checker Agent", "status": "belum dipasang"},
+        {"nama": "Fact Checker Agent", "status": "aktif"},
         {"nama": "Trend Agent", "status": "belum dipasang"},
         {"nama": "Report Agent", "status": "belum dipasang"},
         {"nama": "Publisher Agent", "status": "belum dipasang"},
@@ -416,6 +416,71 @@ def ringkasan_riset(q: str = "Islamic environmental ethics"):
     except Exception as e:
         return {"error": str(e)}
     return {"ringkasan": ringkasan, "berdasarkan_publikasi": publikasi}
+
+
+def cek_fakta_ai(ringkasan, daftar_publikasi):
+    if not GROQ_API_KEY:
+        raise Exception("GROQ_API_KEY belum diatur.")
+
+    daftar_judul = "\n".join(
+        f"- {p['judul']} ({p.get('tahun')})" for p in daftar_publikasi if p.get("judul")
+    )
+
+    # Prompt ini beda peran dari buat_ringkasan_ai: di sini AI berperan
+    # sebagai VERIFIKATOR yang skeptis, bukan penulis ringkasan.
+    prompt = (
+        "Kamu adalah fact-checker yang teliti dan skeptis.\n\n"
+        f"RINGKASAN yang perlu diperiksa:\n{ringkasan}\n\n"
+        f"DAFTAR PUBLIKASI ASLI yang jadi dasar ringkasan itu:\n{daftar_judul}\n\n"
+        "Periksa apakah setiap klaim di ringkasan benar-benar bisa dilacak "
+        "ke daftar publikasi di atas. Jawab dengan format:\n"
+        "STATUS: [TERVERIFIKASI atau ADA KLAIM MERAGUKAN]\n"
+        "CATATAN: [jelaskan singkat, dalam Bahasa Indonesia, klaim mana "
+        "(jika ada) yang tidak didukung jelas oleh judul-judul di atas]"
+    )
+
+    response = requests.post(
+        "https://api.groq.com/openai/v1/chat/completions",
+        headers={"Authorization": f"Bearer {GROQ_API_KEY}"},
+        json={
+            "model": "llama-3.3-70b-versatile",
+            "messages": [{"role": "user", "content": prompt}],
+        },
+        timeout=30,
+    )
+    data = response.json()
+
+    try:
+        return data["choices"][0]["message"]["content"]
+    except (KeyError, IndexError):
+        raise Exception(f"Gagal mendapat respons dari AI: {data}")
+
+
+@app.get("/agent/fact-checker")
+def agent_fact_checker(topik: str = "Islamic environmental ethics"):
+    """
+    Fact Checker Agent — memverifikasi ringkasan AI terhadap data asli
+    yang jadi dasarnya. Dijalankan sebagai langkah TERPISAH dari
+    Research Agent, dengan AI berperan berbeda (verifikator, bukan penulis).
+    """
+    publikasi = ambil_openalex(topik, jumlah=10)
+
+    try:
+        ringkasan = buat_ringkasan_ai(publikasi, topik)
+    except Exception as e:
+        return {"error": f"Gagal membuat ringkasan: {e}"}
+
+    try:
+        hasil_cek = cek_fakta_ai(ringkasan, publikasi)
+    except Exception as e:
+        return {"error": f"Gagal memverifikasi: {e}", "ringkasan": ringkasan}
+
+    return {
+        "topik": topik,
+        "ringkasan_yang_diperiksa": ringkasan,
+        "hasil_pemeriksaan": hasil_cek,
+        "jumlah_publikasi_rujukan": len(publikasi),
+    }
 
 
 @app.get("/agent/research")
