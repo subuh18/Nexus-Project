@@ -223,6 +223,25 @@ def simpan_graph(q: str = "Islamic environmental ethics"):
     except Exception as e:
         return {"error": str(e)}
     return {"status": "tersimpan", "jumlah_publikasi": len(publikasi), "topik": q}
+
+
+@app.get("/simpan-graph-banyak")
+def simpan_graph_banyak(topik: str):
+    # topik dikirim dipisah koma, misalnya:
+    # ?topik=tafsir maqashidi lingkungan,Quranic ecology,climate change Islamic theology
+    if not driver:
+        return {"error": "Neo4j belum terhubung."}
+
+    daftar_topik = [t.strip() for t in topik.split(",") if t.strip()]
+    hasil = []
+    for t in daftar_topik:
+        try:
+            publikasi = ambil_openalex(t, 5) + ambil_crossref(t, 5)
+            simpan_ke_graph(publikasi, t)
+            hasil.append({"topik": t, "status": "tersimpan", "jumlah": len(publikasi)})
+        except Exception as e:
+            hasil.append({"topik": t, "status": "gagal", "error": str(e)})
+    return hasil
 @app.get("/publikasi-gabungan")
 def publikasi_gabungan(q: str = "Islamic environmental ethics"):
     # Ambil dari 3 sumber berbeda, gabungkan jadi satu daftar dengan
