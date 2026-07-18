@@ -233,6 +233,38 @@
     font-family: var(--font-mono);
     text-align:center;
   }
+
+  /* ---------- Search bar ---------- */
+  .search-section{
+    padding: 0 32px 30px;
+    display:flex; gap: 10px; align-items:center;
+  }
+  .search-input{
+    flex:1; max-width: 480px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    color: var(--text);
+    padding: 11px 16px;
+    border-radius: 10px;
+    font-family: var(--font-body);
+    font-size: 14px;
+  }
+  .search-input:focus{ outline: 1px solid var(--teal); }
+  .search-btn{
+    background: linear-gradient(135deg, var(--teal), var(--violet));
+    color: #0B0F17;
+    border: none;
+    padding: 11px 22px;
+    border-radius: 10px;
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  .search-btn:hover{ opacity: 0.9; }
+  .search-hint{
+    font-size: 11px; color: var(--text-muted); font-family: var(--font-mono);
+  }
 </style>
 </head>
 <body>
@@ -261,6 +293,14 @@
       <div class="connector"></div>
       <div class="stage"><div class="stage-num">05</div><div class="stage-name">Action</div></div>
     </div>
+  </div>
+
+  <div class="search-section">
+    <input type="text" id="search-input" class="search-input"
+           placeholder="Cari topik riset, mis. tafsir maqashidi lingkungan..."
+           value="Islamic environmental ethics">
+    <button id="search-btn" class="search-btn">Cari</button>
+    <span class="search-hint">memuat ulang Publikasi & Analisis AI</span>
   </div>
 
   <div class="grid">
@@ -306,8 +346,19 @@
 
   <div class="grid" style="grid-template-columns: 1fr;">
     <div class="panel">
+      <h2>Cari Topik Riset</h2>
+      <div class="sub">Ganti topik untuk memuat ulang publikasi & analisis AI</div>
+      <div class="search-bar">
+        <input type="text" id="topik-input" placeholder="misal: tafsir maqashidi, fiqh lingkungan..." value="Islamic environmental ethics">
+        <button id="topik-btn">Cari</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid" style="grid-template-columns: 1fr;">
+    <div class="panel">
       <h2>Publikasi Terkait Riset</h2>
-      <div class="sub">Data nyata dari OpenAlex — topik: etika lingkungan Islam</div>
+      <div class="sub" id="publikasi-sub">Data nyata dari OpenAlex &amp; Crossref — topik: Islamic environmental ethics</div>
       <div id="publikasi-list">
         <div class="insight"><div class="insight-text">Memuat data dari backend...</div></div>
       </div>
@@ -398,57 +449,75 @@
       })
       .catch(err => console.error(err));
 
-    fetch(`${API_BASE}/ringkasan-riset`)
-      .then(res => res.json())
-      .then(data => {
-        const container = document.getElementById("insights-list");
-        container.innerHTML = "";
-        if (data.error) {
-          container.innerHTML = `<div class="insight" style="color:#F2A65A">${data.error}</div>`;
-          return;
-        }
-        const el = document.createElement("div");
-        el.className = "insight";
-        el.innerHTML = `
-          <div class="insight-tag">Analisis AI — Tren Riset</div>
-          <div class="insight-text">${data.ringkasan}</div>
-          <div class="insight-time">Berdasarkan ${data.berdasarkan_publikasi.length} publikasi dari OpenAlex</div>
-        `;
-        container.appendChild(el);
-      })
-      .catch(err => {
-        const container = document.getElementById("insights-list");
-        container.innerHTML = `<div class="insight" style="color:#F2A65A">Gagal terhubung ke backend.</div>`;
-        console.error(err);
-      });
-    fetch(`${API_BASE}/publikasi-gabungan`)
-      .then(res => res.json())
-      .then(data => {
-        const container = document.getElementById("publikasi-list");
-        container.innerHTML = "";
-        data.forEach(item => {
-          const el = document.createElement("div");
-          el.className = "insight";
-          if (item.error) {
-            el.style.color = "#F2A65A";
-            el.innerHTML = `<div class="insight-text">${item.error}</div>`;
+    function muatPublikasi(q) {
+      const container = document.getElementById("publikasi-list");
+      container.innerHTML = `<div class="insight"><div class="insight-text">Memuat data dari backend...</div></div>`;
+      fetch(`${API_BASE}/publikasi-gabungan?q=${encodeURIComponent(q)}`)
+        .then(res => res.json())
+        .then(data => {
+          container.innerHTML = "";
+          data.forEach(item => {
+            const el = document.createElement("div");
+            el.className = "insight";
+            if (item.error) {
+              el.style.color = "#F2A65A";
+              el.innerHTML = `<div class="insight-text">${item.error}</div>`;
+              container.appendChild(el);
+              return;
+            }
+            const penulis = item.penulis.join(", ");
+            el.innerHTML = `
+              <div class="insight-tag">${item.sumber} · ${item.tahun}</div>
+              <div class="insight-text"><a href="${item.link}" target="_blank" style="color:inherit">${item.judul}</a></div>
+              <div class="insight-time">${penulis}</div>
+            `;
             container.appendChild(el);
+          });
+        })
+        .catch(err => {
+          container.innerHTML = `<div class="insight" style="color:#F2A65A">Gagal terhubung ke backend.</div>`;
+          console.error(err);
+        });
+    }
+
+    function muatRingkasan(q) {
+      const container = document.getElementById("insights-list");
+      container.innerHTML = `<div class="insight"><div class="insight-text">AI sedang menganalisis (bisa beberapa detik)...</div></div>`;
+      fetch(`${API_BASE}/ringkasan-riset?q=${encodeURIComponent(q)}`)
+        .then(res => res.json())
+        .then(data => {
+          container.innerHTML = "";
+          if (data.error) {
+            container.innerHTML = `<div class="insight" style="color:#F2A65A">${data.error}</div>`;
             return;
           }
-          const penulis = item.penulis.join(", ");
+          const el = document.createElement("div");
+          el.className = "insight";
           el.innerHTML = `
-            <div class="insight-tag">${item.sumber} · ${item.tahun}</div>
-            <div class="insight-text"><a href="${item.link}" target="_blank" style="color:inherit">${item.judul}</a></div>
-            <div class="insight-time">${penulis}</div>
+            <div class="insight-tag">Analisis AI — Tren Riset</div>
+            <div class="insight-text">${data.ringkasan}</div>
+            <div class="insight-time">Berdasarkan ${data.berdasarkan_publikasi.length} publikasi</div>
           `;
           container.appendChild(el);
+        })
+        .catch(err => {
+          container.innerHTML = `<div class="insight" style="color:#F2A65A">Gagal terhubung ke backend.</div>`;
+          console.error(err);
         });
-      })
-      .catch(err => {
-        const container = document.getElementById("publikasi-list");
-        container.innerHTML = `<div class="insight" style="color:#F2A65A">Gagal terhubung ke backend.</div>`;
-        console.error(err);
-      });
+    }
+
+    // Muat dengan kata kunci awal (default) saat halaman pertama dibuka
+    const defaultQuery = document.getElementById("search-input").value;
+    muatPublikasi(defaultQuery);
+    muatRingkasan(defaultQuery);
+
+    // Saat tombol "Cari" diklik, muat ulang kedua panel dengan kata kunci baru
+    document.getElementById("search-btn").addEventListener("click", () => {
+      const q = document.getElementById("search-input").value.trim();
+      if (!q) return;
+      muatPublikasi(q);
+      muatRingkasan(q);
+    });
   </script>
 
 </body>
