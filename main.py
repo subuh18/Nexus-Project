@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import requests
 import os
+import xml.etree.ElementTree as ET
 from neo4j import GraphDatabase
 
 app = FastAPI(title="NEXUS Backend API")
@@ -176,6 +177,42 @@ def ambil_semantic_scholar(q: str, jumlah: int = 5):
     return hasil
 
 
+def ambil_arxiv(q: str, jumlah: int = 5):
+    # arXiv mengembalikan XML (Atom feed), bukan JSON — perlu di-parse berbeda.
+    url = "http://export.arxiv.org/api/query"
+    params = {
+        "search_query": f"all:{q}",
+        "max_results": jumlah,
+    }
+    response = requests.get(url, params=params, timeout=10)
+
+    # Atom feed pakai "namespace" — semacam prefix wajib di setiap tag,
+    # supaya tag <title> dari Atom tidak tertukar tag <title> format lain.
+    ns = {"atom": "http://www.w3.org/2005/Atom"}
+    root = ET.fromstring(response.text)
+
+    hasil = []
+    for entry in root.findall("atom:entry", ns):
+        judul_tag = entry.find("atom:title", ns)
+        id_tag = entry.find("atom:id", ns)
+        published_tag = entry.find("atom:published", ns)
+        penulis = [
+            a.find("atom:name", ns).text
+            for a in entry.findall("atom:author", ns)
+        ][:3]
+
+        hasil.append({
+            "judul": judul_tag.text.strip() if judul_tag is not None else None,
+            "tahun": (
+                published_tag.text[:4] if published_tag is not None else None
+            ),
+            "penulis": penulis,
+            "link": id_tag.text if id_tag is not None else None,
+            "sumber": "arXiv",
+        })
+    return hasil
+
+
 @app.get("/publikasi-terbaru")
 def publikasi_terbaru(q: str = "Islamic environmental ethics"):
     return ambil_openalex(q)
@@ -217,8 +254,8 @@ def simpan_graph(q: str = "Islamic environmental ethics"):
     if not driver:
         return {"error": "Neo4j belum terhubung. Set NEO4J_URI, NEO4J_USER, NEO4J_PASSWORD di environment variable."}
 
-    publikasi = ambil_openalex(q, 15) + ambil_crossref(q, 15)
     try:
+        publikasi = ambil_openalex(q, 15) + ambil_crossref(q, 15) + ambil_arxiv(q, 15)
         simpan_ke_graph(publikasi, q)
     except Exception as e:
         return {"error": str(e)}
@@ -236,7 +273,7 @@ def simpan_graph_banyak(topik: str):
     hasil = []
     for t in daftar_topik:
         try:
-            publikasi = ambil_openalex(t, 15) + ambil_crossref(t, 15)
+            publikasi = ambil_openalex(t, 15) + ambil_crossref(t, 15) + ambil_arxiv(t, 15)
             simpan_ke_graph(publikasi, t)
             hasil.append({"topik": t, "status": "tersimpan", "jumlah": len(publikasi)})
         except Exception as e:
@@ -249,7 +286,7 @@ def publikasi_gabungan(q: str = "Islamic environmental ethics"):
     # asalnya). Kalau salah satu sumber gagal, jangan sampai bikin
     # seluruh endpoint ikut gagal — tangkap errornya per sumber.
     hasil = []
-    for fungsi in (ambil_openalex, ambil_crossref, ambil_semantic_scholar):
+    for fungsi in (ambil_openalex, ambil_crossref, ambil_semantic_scholar, ambil_arxiv):
         try:
             hasil.extend(fungsi(q, 3))
         except Exception as e:
