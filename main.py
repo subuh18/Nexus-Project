@@ -51,7 +51,7 @@ def sumber_data():
 @app.get("/agents")
 def agents():
     return [
-        {"nama": "Research Agent", "status": "belum dipasang"},
+        {"nama": "Research Agent", "status": "aktif"},
         {"nama": "News Agent", "status": "belum dipasang"},
         {"nama": "Crawler Agent", "status": "belum dipasang"},
         {"nama": "Fact Checker Agent", "status": "belum dipasang"},
@@ -375,20 +375,16 @@ def publikasi_gabungan(q: str = "Islamic environmental ethics"):
     return hasil
 
 
-@app.get("/ringkasan-riset")
-def ringkasan_riset(q: str = "Islamic environmental ethics"):
+def buat_ringkasan_ai(daftar_publikasi, topik):
     if not GROQ_API_KEY:
-        return {"error": "GROQ_API_KEY belum diatur di environment variable."}
+        raise Exception("GROQ_API_KEY belum diatur di environment variable.")
 
-    publikasi = ambil_openalex(q, jumlah=5)
-
-    # Susun daftar judul jadi satu teks yang akan dikirim ke AI
     daftar_judul = "\n".join(
-        f"- {p['judul']} ({p['tahun']})" for p in publikasi
+        f"- {p['judul']} ({p.get('tahun')})" for p in daftar_publikasi if p.get("judul")
     )
 
     prompt = (
-        "Berikut daftar judul publikasi ilmiah:\n\n"
+        f"Berikut daftar judul publikasi ilmiah tentang '{topik}':\n\n"
         f"{daftar_judul}\n\n"
         "Buat ringkasan singkat (3-4 kalimat, dalam Bahasa Indonesia) "
         "tentang tema atau pola apa yang terlihat dari judul-judul ini, "
@@ -407,8 +403,59 @@ def ringkasan_riset(q: str = "Islamic environmental ethics"):
     data = response.json()
 
     try:
-        ringkasan = data["choices"][0]["message"]["content"]
+        return data["choices"][0]["message"]["content"]
     except (KeyError, IndexError):
-        return {"error": "Gagal mendapat respons dari AI.", "detail": data}
+        raise Exception(f"Gagal mendapat respons dari AI: {data}")
 
+
+@app.get("/ringkasan-riset")
+def ringkasan_riset(q: str = "Islamic environmental ethics"):
+    publikasi = ambil_openalex(q, jumlah=5)
+    try:
+        ringkasan = buat_ringkasan_ai(publikasi, q)
+    except Exception as e:
+        return {"error": str(e)}
     return {"ringkasan": ringkasan, "berdasarkan_publikasi": publikasi}
+
+
+@app.get("/agent/research")
+def agent_research(topik: str = "Islamic environmental ethics"):
+    """
+    Research Agent — satu panggilan menjalankan 3 langkah sekaligus:
+    1. Ambil publikasi dari 4 sumber
+    2. Simpan ke Knowledge Graph (Neo4j)
+    3. Buat ringkasan AI dari hasilnya
+    Ini yang membedakan "agent" dari endpoint biasa: banyak langkah
+    dijalankan sebagai satu tugas utuh, bukan dipanggil manual satu-satu.
+    """
+    laporan = {"topik": topik, "langkah": []}
+
+    # Langkah 1 — ambil dari 4 sumber, catat kalau ada sumber yang gagal
+    publikasi = []
+    for fungsi in (ambil_openalex, ambil_crossref, ambil_semantic_scholar, ambil_arxiv):
+        try:
+            publikasi.extend(fungsi(topik, 10))
+            laporan["langkah"].append(f"{fungsi.__name__}: berhasil")
+        except Exception as e:
+            laporan["langkah"].append(f"{fungsi.__name__}: gagal ({e})")
+
+    laporan["jumlah_publikasi"] = len(publikasi)
+
+    # Langkah 2 — simpan ke graph (kalau Neo4j terhubung)
+    if driver:
+        try:
+            simpan_ke_graph(publikasi, topik)
+            laporan["langkah"].append("simpan ke graph: berhasil")
+        except Exception as e:
+            laporan["langkah"].append(f"simpan ke graph: gagal ({e})")
+    else:
+        laporan["langkah"].append("simpan ke graph: dilewati (Neo4j belum terhubung)")
+
+    # Langkah 3 — ringkasan AI
+    try:
+        laporan["ringkasan"] = buat_ringkasan_ai(publikasi, topik)
+        laporan["langkah"].append("ringkasan AI: berhasil")
+    except Exception as e:
+        laporan["langkah"].append(f"ringkasan AI: gagal ({e})")
+
+    return laporan

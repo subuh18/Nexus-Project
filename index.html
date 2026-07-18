@@ -472,7 +472,7 @@
         data.forEach(item => {
           const row = document.createElement("div");
           row.className = "agent-row";
-          const dotClass = item.status === "menampilkan ini" ? "run" : "idle";
+          const dotClass = (item.status === "menampilkan ini" || item.status === "aktif") ? "run" : "idle";
           row.innerHTML = `
             <span class="agent-dot ${dotClass}"></span>
             <span class="agent-name">${item.nama}</span>
