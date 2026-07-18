@@ -217,7 +217,7 @@ def simpan_graph(q: str = "Islamic environmental ethics"):
     if not driver:
         return {"error": "Neo4j belum terhubung. Set NEO4J_URI, NEO4J_USER, NEO4J_PASSWORD di environment variable."}
 
-    publikasi = ambil_openalex(q, 5) + ambil_crossref(q, 5)
+    publikasi = ambil_openalex(q, 15) + ambil_crossref(q, 15)
     try:
         simpan_ke_graph(publikasi, q)
     except Exception as e:
@@ -236,7 +236,7 @@ def simpan_graph_banyak(topik: str):
     hasil = []
     for t in daftar_topik:
         try:
-            publikasi = ambil_openalex(t, 5) + ambil_crossref(t, 5)
+            publikasi = ambil_openalex(t, 15) + ambil_crossref(t, 15)
             simpan_ke_graph(publikasi, t)
             hasil.append({"topik": t, "status": "tersimpan", "jumlah": len(publikasi)})
         except Exception as e:
