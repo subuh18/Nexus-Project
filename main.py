@@ -324,7 +324,7 @@ def ambil_berita(q: str, jumlah: int = 5):
 
 
 @app.get("/publikasi-terbaru")
-def publikasi_terbaru(q: str = "Islamic environmental ethics"):
+def publikasi_terbaru(q: str):
     return ambil_openalex(q)
 
 
@@ -360,7 +360,7 @@ def simpan_ke_graph(daftar_publikasi, topik):
 
 
 @app.get("/simpan-graph")
-def simpan_graph(q: str = "Islamic environmental ethics"):
+def simpan_graph(q: str):
     if not driver:
         return {"error": "Neo4j belum terhubung. Set NEO4J_URI, NEO4J_USER, NEO4J_PASSWORD di environment variable."}
 
@@ -390,7 +390,7 @@ def simpan_graph_banyak(topik: str):
             hasil.append({"topik": t, "status": "gagal", "error": str(e)})
     return hasil
 @app.get("/publikasi-gabungan")
-def publikasi_gabungan(q: str = "Islamic environmental ethics"):
+def publikasi_gabungan(q: str):
     # Ambil dari 3 sumber berbeda, gabungkan jadi satu daftar dengan
     # format yang sama (setiap item punya field "sumber" untuk menandai
     # asalnya). Kalau salah satu sumber gagal, jangan sampai bikin
@@ -438,7 +438,7 @@ def buat_ringkasan_ai(daftar_publikasi, topik):
 
 
 @app.get("/ringkasan-riset")
-def ringkasan_riset(q: str = "Islamic environmental ethics"):
+def ringkasan_riset(q: str):
     publikasi = ambil_openalex(q, jumlah=5)
     try:
         ringkasan = buat_ringkasan_ai(publikasi, q)
@@ -486,7 +486,7 @@ def cek_fakta_ai(ringkasan, daftar_publikasi):
 
 
 @app.get("/agent/fact-checker")
-def agent_fact_checker(topik: str = "Islamic environmental ethics"):
+def agent_fact_checker(topik: str):
     """
     Fact Checker Agent — memverifikasi ringkasan AI terhadap data asli
     yang jadi dasarnya. Dijalankan sebagai langkah TERPISAH dari
@@ -513,7 +513,7 @@ def agent_fact_checker(topik: str = "Islamic environmental ethics"):
 
 
 @app.get("/agent/research")
-def agent_research(topik: str = "Islamic environmental ethics"):
+def agent_research(topik: str):
     """
     Research Agent — satu panggilan menjalankan 3 langkah sekaligus:
     1. Ambil publikasi dari 4 sumber
@@ -556,7 +556,7 @@ def agent_research(topik: str = "Islamic environmental ethics"):
 
 
 @app.get("/agent/news")
-def agent_news(topik: str = "etika lingkungan Islam"):
+def agent_news(topik: str):
     """
     News Agent — memantau berita terkini (bukan jurnal akademik) terkait
     topik riset, lalu membuat ringkasan singkat soal wacana publik
@@ -597,7 +597,7 @@ def agent_news(topik: str = "etika lingkungan Islam"):
 
 
 @app.get("/agent/trend")
-def agent_trend(topik: str = "Islamic environmental ethics"):
+def agent_trend(topik: str):
     """
     Trend Agent — TIDAK mengambil data baru dari internet. Dia membaca
     ulang data yang sudah tersimpan di Knowledge Graph (hasil kerja
@@ -656,7 +656,7 @@ def agent_trend(topik: str = "Islamic environmental ethics"):
 
 
 @app.get("/agent/report")
-def agent_report(topik: str = "Islamic environmental ethics"):
+def agent_report(topik: str):
     """
     Report Agent — TIDAK punya logika sendiri. Tugasnya memanggil ulang
     Research, Fact Checker, News, dan Trend Agent, lalu menyusun hasilnya
@@ -741,7 +741,7 @@ def kirim_telegram(pesan: str):
 
 
 @app.get("/agent/publisher")
-def agent_publisher(topik: str = "Islamic environmental ethics"):
+def agent_publisher(topik: str):
     """
     Publisher Agent — mengambil ringkasan riset (lewat buat_ringkasan_ai,
     yang sudah dipakai Research Agent), lalu MENGIRIMKANNYA keluar sistem

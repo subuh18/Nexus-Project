@@ -298,10 +298,9 @@
 
   <div class="search-section">
     <input type="text" id="search-input" class="search-input"
-           placeholder="Cari topik riset, mis. tafsir maqashidi lingkungan..."
-           value="Islamic environmental ethics">
+           placeholder="Ketik topik riset apa saja, mis. tafsir maqashidi lingkungan, fiqh muamalah, sejarah Islam...">
     <button id="search-btn" class="search-btn">Cari</button>
-    <span class="search-hint">memuat ulang Publikasi & Analisis AI</span>
+    <span class="search-hint">memuat Publikasi & Analisis AI untuk topik yang kamu ketik</span>
   </div>
 
   <div class="grid">
@@ -347,17 +346,6 @@
 
   <div class="grid" style="grid-template-columns: 1fr;">
     <div class="panel">
-      <h2>Cari Topik Riset</h2>
-      <div class="sub">Ganti topik untuk memuat ulang publikasi & analisis AI</div>
-      <div class="search-bar">
-        <input type="text" id="topik-input" placeholder="misal: tafsir maqashidi, fiqh lingkungan..." value="Islamic environmental ethics">
-        <button id="topik-btn">Cari</button>
-      </div>
-    </div>
-  </div>
-
-  <div class="grid" style="grid-template-columns: 1fr;">
-    <div class="panel">
       <h2>Peta Pengetahuan</h2>
       <div class="sub">Visualisasi graph — geser, zoom, klik node untuk lihat detail</div>
       <div id="graph-canvas" style="height: 480px; background: var(--surface-2); border-radius: 10px;"></div>
@@ -367,7 +355,7 @@
   <div class="grid" style="grid-template-columns: 1fr;">
     <div class="panel">
       <h2>Publikasi Terkait Riset</h2>
-      <div class="sub" id="publikasi-sub">Data nyata dari OpenAlex &amp; Crossref — topik: Islamic environmental ethics</div>
+      <div class="sub" id="publikasi-sub">Data nyata dari OpenAlex, Crossref, Semantic Scholar &amp; arXiv — cari topik apa saja di atas</div>
       <div id="publikasi-list">
         <div class="insight"><div class="insight-text">Memuat data dari backend...</div></div>
       </div>
@@ -558,17 +546,23 @@
         });
     }
 
-    // Muat dengan kata kunci awal (default) saat halaman pertama dibuka
-    const defaultQuery = document.getElementById("search-input").value;
-    muatPublikasi(defaultQuery);
-    muatRingkasan(defaultQuery);
+    // Tidak ada topik default lagi — dashboard netral, menunggu pengguna
+    // mengetik topik risetnya sendiri. Tampilkan pesan ajakan di kedua panel.
+    document.getElementById("publikasi-list").innerHTML =
+      `<div class="insight"><div class="insight-text">Ketik topik riset di atas, lalu klik "Cari" untuk memuat publikasi.</div></div>`;
+    document.getElementById("insights-list").innerHTML =
+      `<div class="insight"><div class="insight-text">Analisis AI akan muncul di sini setelah kamu mencari topik.</div></div>`;
 
-    // Saat tombol "Cari" diklik, muat ulang kedua panel dengan kata kunci baru
-    document.getElementById("search-btn").addEventListener("click", () => {
+    function jalankanPencarian() {
       const q = document.getElementById("search-input").value.trim();
       if (!q) return;
       muatPublikasi(q);
       muatRingkasan(q);
+    }
+
+    document.getElementById("search-btn").addEventListener("click", jalankanPencarian);
+    document.getElementById("search-input").addEventListener("keydown", (e) => {
+      if (e.key === "Enter") jalankanPencarian();
     });
   </script>
 
