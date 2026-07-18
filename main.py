@@ -53,7 +53,7 @@ def agents():
     return [
         {"nama": "Research Agent", "status": "aktif"},
         {"nama": "News Agent", "status": "aktif"},
-        {"nama": "Crawler Agent", "status": "belum dipasang"},
+        {"nama": "Crawler Agent", "status": "terjadwal"},
         {"nama": "Fact Checker Agent", "status": "aktif"},
         {"nama": "Trend Agent", "status": "aktif"},
         {"nama": "Report Agent", "status": "aktif"},
